@@ -105,32 +105,30 @@ namespace FunctionApp
         private static async Task GetPlayerScores(string playerId, SqlConnection connection, List<ScoreEntry> scores,
             int mode)
         {
-            //SELECT Top 10
-            //    [RANK], *
-            //    FROM(
-            //        SELECT
-            //DENSE_RANK() OVER(ORDER BY Score DESC)[RANK], *
-            //    FROM[dbo].[Scores]
-            //    ) ResultSet
-            //Where PlayerId = 'dingo1234'
-            //ORDER BY SCORE DESC
-
-
             var text =
-                $"SELECT TOP (10) * FROM [dbo].[Scores]\r\nWhere PlayerId = @playerId and  Mode='{mode}'\r\norder by Score desc";
+$@"SELECT Top 10 *
+FROM (SELECT
+        DENSE_RANK() OVER (ORDER BY Score DESC) [Rank], *
+    FROM [dbo].[Scores]
+	Where Mode = '{mode}'
+) ResultSet
+Where PlayerId = @playerId
+and Mode = '{mode}'
+ORDER BY SCORE DESC";
             await using var cmd = new SqlCommand(text, connection);
-            cmd.Parameters.Add("@playerId", SqlDbType.NVarChar).Value = playerId;
+            cmd.Parameters.AddWithValue("@playerId", playerId);
             await using var reader = await cmd.ExecuteReaderAsync();
             while (reader.Read())
             {
                 scores.Add(new ScoreEntry
                 {
-                    PlayerId = (string) reader.GetValue(1),
-                    PlayerName = (string) reader.GetValue(2),
-                    Score = (long) reader.GetValue(3),
-                    Mode = (int) reader.GetValue(4),
-                    Seed = (string) reader.GetValue(5),
-                    CreatedDate = (DateTime) reader.GetValue(6)
+                    Rank = (long) reader.GetValue(0),
+                    PlayerId = (string) reader.GetValue(2),
+                    PlayerName = (string) reader.GetValue(3),
+                    Score = (long) reader.GetValue(4),
+                    Mode = (int) reader.GetValue(5),
+                    Seed = (string) reader.GetValue(6),
+                    CreatedDate = (DateTime) reader.GetValue(7)
                 });
             }
         }
@@ -140,10 +138,12 @@ namespace FunctionApp
             var text = $"SELECT TOP (10) * FROM [dbo].[Scores]\r\nWhere Mode='{mode}'\r\norder by Score desc";
             await using var cmd = new SqlCommand(text, connection);
             await using var reader = await cmd.ExecuteReaderAsync();
+            var rank = 1;
             while (reader.Read())
             {
                 scores.Add(new ScoreEntry
                 {
+                    Rank = rank,
                     PlayerId = (string) reader.GetValue(1),
                     PlayerName = (string) reader.GetValue(2),
                     Score = (long) reader.GetValue(3),
@@ -151,6 +151,7 @@ namespace FunctionApp
                     Seed = (string) reader.GetValue(5),
                     CreatedDate = (DateTime) reader.GetValue(6)
                 });
+                rank++;
             }
         }
 
@@ -191,7 +192,7 @@ namespace FunctionApp
 
     public class ScoreEntry
     {
-        // public int Rank {get; set;}
+        public long Rank { get; set; }
         public string PlayerName { get; set; }
         public string PlayerId { get; set; }
         public long Score { get; set; }
