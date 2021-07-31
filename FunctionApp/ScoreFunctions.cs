@@ -94,8 +94,7 @@ namespace FunctionApp
 
         private static bool IsValid(ScoreEntry toTest)
         {
-            return true;
-            var computed = toTest.Score + toTest.PlayerId + toTest.Seed + toTest.CreatedDate +
+            var computed = toTest.Score + toTest.PlayerId + toTest.Seed + DateTime.UtcNow.Date +
                            Environment.GetEnvironmentVariable("HashSalt");
             var bytes = Encoding.UTF8.GetBytes(CreateMD5(computed));
             var encoded = Convert.ToBase64String(bytes);
