@@ -87,7 +87,7 @@ namespace FunctionApp
             dynamic data = JsonConvert.SerializeObject(new
             {
                 PlayerScores = playerScores,
-                Highscores = highScores
+                HighScores = highScores
             });
             return new OkObjectResult(data);
         }
