@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +52,7 @@ namespace FunctionApp
 
             var connStr = Environment.GetEnvironmentVariable("SQLConnectionString");
 
+
             if (request != null && IsValid(request) && playerId == request.PlayerId)
             {
                 log.LogInformation($"Post is valid for {playerId}");
@@ -94,7 +94,7 @@ namespace FunctionApp
 
         private static bool IsValid(ScoreEntry toTest)
         {
-            var computed = toTest.Score + toTest.PlayerId + toTest.Seed + DateTime.UtcNow.Date +
+            var computed = toTest.Score + toTest.PlayerId + toTest.Seed + DateTime.UtcNow.Date.Ticks +
                            Environment.GetEnvironmentVariable("HashSalt");
             var bytes = Encoding.UTF8.GetBytes(CreateMD5(computed));
             var encoded = Convert.ToBase64String(bytes);
