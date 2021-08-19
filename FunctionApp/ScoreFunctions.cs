@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace FunctionApp
@@ -74,21 +75,26 @@ namespace FunctionApp
 
         private static async Task<IActionResult> GetScoresFromDb(string playerId, string connStr)
         {
-            var playerScores = new List<ScoreEntry>();
-            var highScores = new List<ScoreEntry>();
+            var scores = new List<ModeScoreCollection>
+            {
+                new ModeScoreCollection { Mode = 1 },
+                new ModeScoreCollection { Mode = 2 },
+                new ModeScoreCollection { Mode = 3 },
+                new ModeScoreCollection { Mode = 4 }
+            };
 
             await using (var connection = new SqlConnection(connStr))
             {
                 connection.Open();
-                await GetPlayerScores(playerId, connection, playerScores, 1);
-                await GetHighScores(connection, highScores, 1);
+                foreach (var collection in scores)
+                {
+                    await GetPlayerScores(playerId, connection, collection, collection.Mode);
+                    await GetHighScores(connection, collection, collection.Mode);
+                }
+                
             }
 
-            dynamic data = JsonConvert.SerializeObject(new
-            {
-                PlayerScores = playerScores,
-                HighScores = highScores
-            });
+            dynamic data = JsonConvert.SerializeObject(scores);
             return new OkObjectResult(data);
         }
 
@@ -96,12 +102,12 @@ namespace FunctionApp
         {
             var computed = toTest.Score + toTest.PlayerId + toTest.Seed + DateTime.UtcNow.Date.Ticks +
                            Environment.GetEnvironmentVariable("HashSalt");
-            var bytes = Encoding.UTF8.GetBytes(CreateMD5(computed));
+            var bytes = Encoding.UTF8.GetBytes(CreateHash(computed));
             var encoded = Convert.ToBase64String(bytes);
             return encoded == toTest.ScoreHash;
         }
 
-        private static async Task GetPlayerScores(string playerId, SqlConnection connection, List<ScoreEntry> scores,
+        private static async Task GetPlayerScores(string playerId, SqlConnection connection, ModeScoreCollection scores,
             int mode)
         {
             var text =
@@ -117,9 +123,10 @@ ORDER BY SCORE DESC";
             await using var cmd = new SqlCommand(text, connection);
             cmd.Parameters.AddWithValue("@playerId", playerId);
             await using var reader = await cmd.ExecuteReaderAsync();
+            scores.PlayerScores = new List<ScoreEntry>();
             while (reader.Read())
             {
-                scores.Add(new ScoreEntry
+                scores.PlayerScores.Add(new ScoreEntry
                 {
                     Rank = (long) reader.GetValue(0),
                     PlayerId = (string) reader.GetValue(2),
@@ -132,15 +139,16 @@ ORDER BY SCORE DESC";
             }
         }
 
-        private static async Task GetHighScores(SqlConnection connection, List<ScoreEntry> scores, int mode)
+        private static async Task GetHighScores(SqlConnection connection, ModeScoreCollection scores, int mode)
         {
             var text = $"SELECT TOP (10) * FROM [dbo].[Scores]\r\nWhere Mode='{mode}'\r\norder by Score desc";
             await using var cmd = new SqlCommand(text, connection);
             await using var reader = await cmd.ExecuteReaderAsync();
             var rank = 1;
+            scores.HighScores = new List<ScoreEntry>();
             while (reader.Read())
             {
-                scores.Add(new ScoreEntry
+                scores.HighScores.Add(new ScoreEntry
                 {
                     Rank = rank,
                     PlayerId = (string) reader.GetValue(1),
@@ -171,20 +179,18 @@ ORDER BY SCORE DESC";
         }
 
         // ReSharper disable once InconsistentNaming
-        private static string CreateMD5(string input)
+        private static string CreateHash(string input)
         {
-            // Use input string to calculate MD5 hash
-            using var md5 = System.Security.Cryptography.MD5.Create();
-            var inputBytes = Encoding.ASCII.GetBytes(input);
-            var hashBytes = md5.ComputeHash(inputBytes);
+            using var sha256Hash = SHA256.Create();
+            // ComputeHash - returns byte array  
+            var bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
 
-            // Convert the byte array to hexadecimal string
+            // Convert byte array to a string   
             var sb = new StringBuilder();
-            foreach (var t in hashBytes)
+            foreach (var t in bytes)
             {
-                sb.Append(t.ToString("X2"));
+                sb.Append(t.ToString("x2"));
             }
-
             return sb.ToString();
         }
     }
@@ -199,5 +205,12 @@ ORDER BY SCORE DESC";
         public int Mode { get; set; }
         public string Seed { get; set; }
         public DateTime CreatedDate { get; set; }
+    }
+
+    public class ModeScoreCollection
+    {
+        public int Mode { get; set; }
+        public List<ScoreEntry> PlayerScores { get; set; }
+        public List<ScoreEntry> HighScores { get; set; }
     }
 }
