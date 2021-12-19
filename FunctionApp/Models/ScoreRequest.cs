@@ -6,6 +6,8 @@ namespace FunctionApp.Models
 {
     public class ScoreRequest
     {
+        private const string HashSaltName = "HashSalt";
+        
         /// <summary>
         /// The display name for the owner of this score
         /// </summary>
@@ -38,7 +40,7 @@ namespace FunctionApp.Models
         public bool IsValid()
         {
             var computed =
-                $"{Score}{PlayerId}{Seed}{DateTime.UtcNow.Date.Ticks}{Environment.GetEnvironmentVariable("HashSalt")}";
+                $"{Score}{PlayerId}{Seed}{DateTime.UtcNow.Date.Ticks}{Environment.GetEnvironmentVariable(HashSaltName)}";
             var bytes = Encoding.UTF8.GetBytes(CreateHash(computed));
             var encoded = Convert.ToBase64String(bytes);
             return encoded == ScoreHash;

@@ -14,6 +14,8 @@ namespace FunctionApp
 {
     public static class ScoreFunctions
     {
+        private const string ConnectionStringParameter = "SQLConnectionString";
+
         /// <summary>
         /// Function endpoint to get current scores for a player across all game modes
         /// </summary>
@@ -30,14 +32,14 @@ namespace FunctionApp
         {
             log.LogInformation($"Get player scores for {playerId}");
 
-            var connStr = Environment.GetEnvironmentVariable("SQLConnectionString");
+            var connStr = Environment.GetEnvironmentVariable(ConnectionStringParameter);
 
             return await ScoreRepository.GetScoresFromDb(playerId, connStr);
         }
 
         /// <summary>
         /// Function endpoint to post a score for a game mode. Returns nothing as success and failure are silent.
-        /// The main concerns here are user trying to spoof high scores.
+        /// The main concerns here are users trying to spoof high scores.
         /// </summary>
         /// <param name="req">Http request</param>
         /// <param name="playerId">Player Id from query string</param>
@@ -63,7 +65,7 @@ namespace FunctionApp
                 log.LogInformation($"Deserialize failed for {playerId} - {exception.Message}");
             }
 
-            var connStr = Environment.GetEnvironmentVariable("SQLConnectionString");
+            var connStr = Environment.GetEnvironmentVariable(ConnectionStringParameter);
 
             // Only post valid scores
             if (request != null && request.IsValid() && playerId == request.PlayerId)

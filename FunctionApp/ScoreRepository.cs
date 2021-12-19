@@ -11,11 +11,11 @@ namespace FunctionApp
     public class ScoreRepository
     {
         /// <summary>
-        /// Get an object containing the scores for each mode in the game
+        /// Get an object containing the scores for each mode in the game from backing database
         /// </summary>
         /// <param name="playerId">The player id to gets scores for</param>
         /// <param name="connStr">Connection string</param>
-        /// <returns>A list of list for all game modes</returns>
+        /// <returns>A list of scores for all game modes</returns>
         public static async Task<IActionResult> GetScoresFromDb(string playerId, string connStr)
         {
             // Modes we want to get scores for
